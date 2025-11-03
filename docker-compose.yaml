@@ -2,6 +2,30 @@
 
 version: '3.8'
 
+# 控制台服务基础配置模板
+x-controller-common: &controller-common
+  build:
+    context: ./online_judge_controller
+    dockerfile: cmd/controller/Dockerfile
+  environment: 
+    # 从.env文件加载环境变量
+    - MINIO_ACCESS_KEY_ID=${MINIO_ACCESS_KEY_ID}
+    - MINIO_SECRET_ACCESS_KEY=${MINIO_SECRET_ACCESS_KEY}
+  env_file:
+    - .env
+  volumes:
+    - ./online_judge_controller/cmd/controller/config/config.linux.yaml:/root/config/config.yaml:ro
+  depends_on:
+    mysql:
+      condition: service_healthy
+    redis:
+      condition: service_started
+    minio:
+      condition: service_healthy
+  networks:
+    - online-judge-network
+  restart: unless-stopped
+
 services:
   # 网关服务
   online-judge-gateway:
@@ -27,30 +51,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-
-  # 控制台服务基础配置模板
-  x-controller-common: &controller-common
-    build:
-      context: ./online_judge_controller
-      dockerfile: cmd/controller/Dockerfile
-    environment: 
-      # 从.env文件加载环境变量
-      - MINIO_ACCESS_KEY_ID=${MINIO_ACCESS_KEY_ID}
-      - MINIO_SECRET_ACCESS_KEY=${MINIO_SECRET_ACCESS_KEY}
-    env_file:
-      - .env
-    volumes:
-      - ./online_judge_controller/cmd/controller/config/config.linux.yaml:/root/config/config.yaml:ro
-    depends_on:
-      mysql:
-        condition: service_healthy
-      redis:
-        condition: service_started
-      minio:
-        condition: service_healthy
-    networks:
-      - online-judge-network
-    restart: unless-stopped
 
   # 控制台服务实例1
   online-judge-controller-1:

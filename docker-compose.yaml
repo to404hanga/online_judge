@@ -15,7 +15,9 @@ services:
     depends_on:
       - mysql
       - redis
-      - online-judge-controller
+      - online-judge-controller-1
+      - online-judge-controller-2
+      - online-judge-controller-3
     networks:
       - online-judge-network
     restart: unless-stopped

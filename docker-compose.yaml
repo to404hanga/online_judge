@@ -55,8 +55,8 @@ services:
   # 控制台服务实例1
   online-judge-controller-1:
     <<: *controller-common
-    ports:
-      - "${ONLINE_JUDGE_CONTROLLER_PORT_1}:${ONLINE_JUDGE_CONTROLLER_PORT_1}"
+    # ports:
+    #   - "${ONLINE_JUDGE_CONTROLLER_PORT_1}:${ONLINE_JUDGE_CONTROLLER_PORT_1}"
     environment: 
       # 从.env文件加载环境变量
       - MINIO_ACCESS_KEY_ID=${MINIO_ACCESS_KEY_ID}
@@ -66,8 +66,8 @@ services:
   # 控制台服务实例2
   online-judge-controller-2:
     <<: *controller-common
-    ports:
-      - "${ONLINE_JUDGE_CONTROLLER_PORT_2}:${ONLINE_JUDGE_CONTROLLER_PORT_2}"
+    # ports:
+    #   - "${ONLINE_JUDGE_CONTROLLER_PORT_2}:${ONLINE_JUDGE_CONTROLLER_PORT_2}"
     environment: 
       # 从.env文件加载环境变量
       - MINIO_ACCESS_KEY_ID=${MINIO_ACCESS_KEY_ID}
@@ -77,8 +77,8 @@ services:
   # 控制台服务实例3
   online-judge-controller-3:
     <<: *controller-common
-    ports:
-      - "${ONLINE_JUDGE_CONTROLLER_PORT_3}:${ONLINE_JUDGE_CONTROLLER_PORT_3}"
+    # ports:
+    #   - "${ONLINE_JUDGE_CONTROLLER_PORT_3}:${ONLINE_JUDGE_CONTROLLER_PORT_3}"
     environment: 
       # 从.env文件加载环境变量
       - MINIO_ACCESS_KEY_ID=${MINIO_ACCESS_KEY_ID}
@@ -95,8 +95,8 @@ services:
       MYSQL_PASSWORD: "123456"
       # 优化MySQL配置
       MYSQL_INITDB_SKIP_TZINFO: 1
-    ports:
-      - "3306:3306"
+    # ports:
+    #   - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
       - mysql_config:/etc/mysql/conf.d
@@ -121,8 +121,8 @@ services:
   # Redis 7 缓存
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
+    # ports:
+    #   - "6379:6379"
     volumes:
       - redis_data:/data
       - redis_config:/usr/local/etc/redis

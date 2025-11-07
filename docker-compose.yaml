@@ -85,6 +85,30 @@ services:
       - MINIO_SECRET_ACCESS_KEY=${MINIO_SECRET_ACCESS_KEY}
       - SERVER_PORT=${ONLINE_JUDGE_CONTROLLER_PORT_3}
 
+  # 控制台定时任务
+  online-judge-controller-cronjob:
+    build:
+      context: ./online_judge_controller
+      dockerfile: cmd/cronjob/Dockerfile
+    environment: 
+      # 从.env文件加载环境变量
+      - MINIO_ACCESS_KEY_ID=${MINIO_ACCESS_KEY_ID}
+      - MINIO_SECRET_ACCESS_KEY=${MINIO_SECRET_ACCESS_KEY}
+    env_file:
+      - .env
+    volumes:
+      - ./online_judge_controller/cmd/cronjob/config/config.linux.yaml:/root/config/config.yaml:ro
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      minio:
+        condition: service_healthy
+    networks:
+      - online-judge-network
+    restart: unless-stopped 
+
   # MySQL 8.0 数据库
   mysql:
     image: mysql:8.0

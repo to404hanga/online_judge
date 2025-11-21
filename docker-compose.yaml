@@ -28,6 +28,23 @@ x-controller-common: &controller-common
     - online-judge-network
   restart: unless-stopped
 
+x-online-judge-judger-worker: &judger-worker-common
+  build:
+    context: ./online_judge_judger
+    dockerfile: cmd/worker/Dockfile
+  volumes:
+    - ./online_judge_judger/cmd/worker/config/config.linux.yaml:/root/config/config.yaml:ro
+  depends_on:
+    mysql:
+      condition: service_healthy
+    redis:
+      condition: service_started
+    kafka:
+      condition: service_started
+  networks:
+    - online-judge-network
+  restart: on-failure
+
 services:
   # 网关服务
   online-judge-gateway:
@@ -127,6 +144,9 @@ services:
     networks:
       - online-judge-network
     restart: on-failure
+
+  online-judge-judger-worker:
+    <<: *judger-worker-common
 
   # MySQL 8.0 数据库
   mysql:

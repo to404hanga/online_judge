@@ -111,6 +111,23 @@ services:
       - online-judge-network
     restart: unless-stopped 
 
+  online-judge-judger-master:
+    build:
+      context: ./online_judge_judger
+      dockerfile: cmd/master/Dockfile
+    volumes:
+      - ./online_judge_judger/cmd/master/config/config.linux.yaml:/root/config/config.yaml:ro
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      kafka:
+        condition: service_started
+    networks:
+      - online-judge-network
+    restart: on-failure
+
   # MySQL 8.0 数据库
   mysql:
     image: mysql:8.0

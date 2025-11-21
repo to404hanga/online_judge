@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=https://raw.githubusercontent.com/compose-spec/compose-go/v1.20.2/schema/compose-spec.json
+# yaml-language-server: $$schema=https://raw.githubusercontent.com/compose-spec/compose-go/v1.20.2/schema/compose-spec.json
 
 version: '3.8'
 
@@ -9,8 +9,8 @@ x-controller-common: &controller-common
     dockerfile: cmd/controller/Dockerfile
   environment: 
     # 从.env文件加载环境变量
-    - MINIO_ACCESS_KEY_ID=${MINIO_ACCESS_KEY_ID}
-    - MINIO_SECRET_ACCESS_KEY=${MINIO_SECRET_ACCESS_KEY}
+    - MINIO_ACCESS_KEY_ID=$${MINIO_ACCESS_KEY_ID}
+    - MINIO_SECRET_ACCESS_KEY=$${MINIO_SECRET_ACCESS_KEY}
   env_file:
     - .env
   volumes:
@@ -22,6 +22,8 @@ x-controller-common: &controller-common
       condition: service_started
     minio:
       condition: service_healthy
+    kafka:
+      condition: service_started
   networks:
     - online-judge-network
   restart: unless-stopped
@@ -56,34 +58,34 @@ services:
   online-judge-controller-1:
     <<: *controller-common
     # ports:
-    #   - "${ONLINE_JUDGE_CONTROLLER_PORT_1}:${ONLINE_JUDGE_CONTROLLER_PORT_1}"
+    #   - "$${ONLINE_JUDGE_CONTROLLER_PORT_1}:$${ONLINE_JUDGE_CONTROLLER_PORT_1}"
     environment: 
       # 从.env文件加载环境变量
-      - MINIO_ACCESS_KEY_ID=${MINIO_ACCESS_KEY_ID}
-      - MINIO_SECRET_ACCESS_KEY=${MINIO_SECRET_ACCESS_KEY}
-      - SERVER_PORT=${ONLINE_JUDGE_CONTROLLER_PORT_1}
+      - MINIO_ACCESS_KEY_ID=$${MINIO_ACCESS_KEY_ID}
+      - MINIO_SECRET_ACCESS_KEY=$${MINIO_SECRET_ACCESS_KEY}
+      - SERVER_PORT=$${ONLINE_JUDGE_CONTROLLER_PORT_1}
 
   # 控制台服务实例2
   online-judge-controller-2:
     <<: *controller-common
     # ports:
-    #   - "${ONLINE_JUDGE_CONTROLLER_PORT_2}:${ONLINE_JUDGE_CONTROLLER_PORT_2}"
+    #   - "$${ONLINE_JUDGE_CONTROLLER_PORT_2}:$${ONLINE_JUDGE_CONTROLLER_PORT_2}"
     environment: 
       # 从.env文件加载环境变量
-      - MINIO_ACCESS_KEY_ID=${MINIO_ACCESS_KEY_ID}
-      - MINIO_SECRET_ACCESS_KEY=${MINIO_SECRET_ACCESS_KEY}
-      - SERVER_PORT=${ONLINE_JUDGE_CONTROLLER_PORT_2}
+      - MINIO_ACCESS_KEY_ID=$${MINIO_ACCESS_KEY_ID}
+      - MINIO_SECRET_ACCESS_KEY=$${MINIO_SECRET_ACCESS_KEY}
+      - SERVER_PORT=$${ONLINE_JUDGE_CONTROLLER_PORT_2}
 
   # 控制台服务实例3
   online-judge-controller-3:
     <<: *controller-common
     # ports:
-    #   - "${ONLINE_JUDGE_CONTROLLER_PORT_3}:${ONLINE_JUDGE_CONTROLLER_PORT_3}"
+    #   - "$${ONLINE_JUDGE_CONTROLLER_PORT_3}:$${ONLINE_JUDGE_CONTROLLER_PORT_3}"
     environment: 
       # 从.env文件加载环境变量
-      - MINIO_ACCESS_KEY_ID=${MINIO_ACCESS_KEY_ID}
-      - MINIO_SECRET_ACCESS_KEY=${MINIO_SECRET_ACCESS_KEY}
-      - SERVER_PORT=${ONLINE_JUDGE_CONTROLLER_PORT_3}
+      - MINIO_ACCESS_KEY_ID=$${MINIO_ACCESS_KEY_ID}
+      - MINIO_SECRET_ACCESS_KEY=$${MINIO_SECRET_ACCESS_KEY}
+      - SERVER_PORT=$${ONLINE_JUDGE_CONTROLLER_PORT_3}
 
   # 控制台定时任务
   online-judge-controller-cronjob:
@@ -92,8 +94,8 @@ services:
       dockerfile: cmd/cronjob/Dockerfile
     environment: 
       # 从.env文件加载环境变量
-      - MINIO_ACCESS_KEY_ID=${MINIO_ACCESS_KEY_ID}
-      - MINIO_SECRET_ACCESS_KEY=${MINIO_SECRET_ACCESS_KEY}
+      - MINIO_ACCESS_KEY_ID=$${MINIO_ACCESS_KEY_ID}
+      - MINIO_SECRET_ACCESS_KEY=$${MINIO_SECRET_ACCESS_KEY}
     env_file:
       - .env
     volumes:
@@ -163,6 +165,53 @@ services:
       interval: 10s
       timeout: 3s
       retries: 5
+      
+  # Kafka broker (KRaft mode, no ZooKeeper)
+  kafka:
+    image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/bitnami/kafka:latest
+    environment:
+      - KAFKA_CFG_NODE_ID=0
+      # - 三个分区
+      - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=false
+      - KAFKA_CFG_PROCESS_ROLES=controller,broker
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://0.0.0.0:9092,CONTROLLER://:9093,EXTERNAL://0.0.0.0:9094
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092,EXTERNAL://localhost:9094
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka:9093
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+    # ports:
+    #   - "9092:9092"  # expose if you need host access
+    networks:
+      - online-judge-network
+    restart: unless-stopped
+
+  kafka-init:
+    image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/bitnami/kafka:latest
+    depends_on:
+      kafka:
+        condition: service_started
+    env_file:
+      - .env
+    command: >
+      bash -lc "
+        set -e
+        TOPIC_CMD=$$(command -v kafka-topics.sh || command -v kafka-topics || echo /opt/bitnami/kafka/bin/kafka-topics.sh);
+        until $$TOPIC_CMD --bootstrap-server kafka:9092 --list >/dev/null 2>&1; do
+          echo 'waiting for kafka...'; sleep 2;
+        done;
+        if [ -n \"$${KAFKA_CREATE_TOPICS}\" ]; then
+          for spec in $$(echo $${KAFKA_CREATE_TOPICS} | tr ',' ' '); do
+            IFS=':' read -r topic partitions replicas <<< \"$$spec\";
+            echo \"creating topic: $$topic partitions=$$partitions replicas=$$replicas\";
+            $$TOPIC_CMD --bootstrap-server kafka:9092 --create --if-not-exists --topic \"$$topic\" --partitions \"$$partitions\" --replication-factor \"$$replicas\";
+          done;
+        else
+          echo 'KAFKA_CREATE_TOPICS not set, skipping topic creation';
+        fi
+      "
+    networks:
+      - online-judge-network
+    restart: "no"
 
   # MinIO 对象存储
   minio:
@@ -171,8 +220,8 @@ services:
       - "9000:9000"
       - "9001:9001"
     environment:
-      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY_ID:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_USER: $${MINIO_ACCESS_KEY_ID:-minioadmin}
+      MINIO_ROOT_PASSWORD: $${MINIO_SECRET_ACCESS_KEY:-minioadmin}
     volumes:
       - minio_data:/data
     command: server /data --console-address ":9001"
@@ -196,6 +245,8 @@ volumes:
   redis_config:
     driver: local
   minio_data:
+    driver: local
+  kafka_data:
     driver: local
 
 networks:

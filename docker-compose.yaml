@@ -1,4 +1,4 @@
-# yaml-language-server: $$schema=https://raw.githubusercontent.com/compose-spec/compose-go/v1.20.2/schema/compose-spec.json
+# yaml-language-server: $schema=https://raw.githubusercontent.com/compose-spec/compose-go/v1.20.2/schema/compose-spec.json
 
 version: '3.8'
 
@@ -9,8 +9,8 @@ x-controller-common: &controller-common
     dockerfile: cmd/controller/Dockerfile
   environment: 
     # 从.env文件加载环境变量
-    - MINIO_ACCESS_KEY_ID=$${MINIO_ACCESS_KEY_ID}
-    - MINIO_SECRET_ACCESS_KEY=$${MINIO_SECRET_ACCESS_KEY}
+    - MINIO_ACCESS_KEY_ID=${MINIO_ACCESS_KEY_ID}
+    - MINIO_SECRET_ACCESS_KEY=${MINIO_SECRET_ACCESS_KEY}
   env_file:
     - .env
   volumes:
@@ -58,34 +58,34 @@ services:
   online-judge-controller-1:
     <<: *controller-common
     # ports:
-    #   - "$${ONLINE_JUDGE_CONTROLLER_PORT_1}:$${ONLINE_JUDGE_CONTROLLER_PORT_1}"
+    #   - "${ONLINE_JUDGE_CONTROLLER_PORT_1}:${ONLINE_JUDGE_CONTROLLER_PORT_1}"
     environment: 
       # 从.env文件加载环境变量
-      - MINIO_ACCESS_KEY_ID=$${MINIO_ACCESS_KEY_ID}
-      - MINIO_SECRET_ACCESS_KEY=$${MINIO_SECRET_ACCESS_KEY}
-      - SERVER_PORT=$${ONLINE_JUDGE_CONTROLLER_PORT_1}
+      - MINIO_ACCESS_KEY_ID=${MINIO_ACCESS_KEY_ID}
+      - MINIO_SECRET_ACCESS_KEY=${MINIO_SECRET_ACCESS_KEY}
+      - SERVER_PORT=${ONLINE_JUDGE_CONTROLLER_PORT_1}
 
   # 控制台服务实例2
   online-judge-controller-2:
     <<: *controller-common
     # ports:
-    #   - "$${ONLINE_JUDGE_CONTROLLER_PORT_2}:$${ONLINE_JUDGE_CONTROLLER_PORT_2}"
+    #   - "${ONLINE_JUDGE_CONTROLLER_PORT_2}:${ONLINE_JUDGE_CONTROLLER_PORT_2}"
     environment: 
       # 从.env文件加载环境变量
-      - MINIO_ACCESS_KEY_ID=$${MINIO_ACCESS_KEY_ID}
-      - MINIO_SECRET_ACCESS_KEY=$${MINIO_SECRET_ACCESS_KEY}
-      - SERVER_PORT=$${ONLINE_JUDGE_CONTROLLER_PORT_2}
+      - MINIO_ACCESS_KEY_ID=${MINIO_ACCESS_KEY_ID}
+      - MINIO_SECRET_ACCESS_KEY=${MINIO_SECRET_ACCESS_KEY}
+      - SERVER_PORT=${ONLINE_JUDGE_CONTROLLER_PORT_2}
 
   # 控制台服务实例3
   online-judge-controller-3:
     <<: *controller-common
     # ports:
-    #   - "$${ONLINE_JUDGE_CONTROLLER_PORT_3}:$${ONLINE_JUDGE_CONTROLLER_PORT_3}"
+    #   - "${ONLINE_JUDGE_CONTROLLER_PORT_3}:${ONLINE_JUDGE_CONTROLLER_PORT_3}"
     environment: 
       # 从.env文件加载环境变量
-      - MINIO_ACCESS_KEY_ID=$${MINIO_ACCESS_KEY_ID}
-      - MINIO_SECRET_ACCESS_KEY=$${MINIO_SECRET_ACCESS_KEY}
-      - SERVER_PORT=$${ONLINE_JUDGE_CONTROLLER_PORT_3}
+      - MINIO_ACCESS_KEY_ID=${MINIO_ACCESS_KEY_ID}
+      - MINIO_SECRET_ACCESS_KEY=${MINIO_SECRET_ACCESS_KEY}
+      - SERVER_PORT=${ONLINE_JUDGE_CONTROLLER_PORT_3}
 
   # 控制台定时任务
   online-judge-controller-cronjob:
@@ -94,8 +94,8 @@ services:
       dockerfile: cmd/cronjob/Dockerfile
     environment: 
       # 从.env文件加载环境变量
-      - MINIO_ACCESS_KEY_ID=$${MINIO_ACCESS_KEY_ID}
-      - MINIO_SECRET_ACCESS_KEY=$${MINIO_SECRET_ACCESS_KEY}
+      - MINIO_ACCESS_KEY_ID=${MINIO_ACCESS_KEY_ID}
+      - MINIO_SECRET_ACCESS_KEY=${MINIO_SECRET_ACCESS_KEY}
     env_file:
       - .env
     volumes:
@@ -228,8 +228,8 @@ services:
       - "9000:9000"
       - "9001:9001"
     environment:
-      MINIO_ROOT_USER: $${MINIO_ACCESS_KEY_ID:-minioadmin}
-      MINIO_ROOT_PASSWORD: $${MINIO_SECRET_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY_ID:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_ACCESS_KEY:-minioadmin}
     volumes:
       - minio_data:/data
     command: server /data --console-address ":9001"

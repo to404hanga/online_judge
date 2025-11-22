@@ -7,21 +7,22 @@ x-controller-common: &controller-common
   build:
     context: ./online_judge_controller
     dockerfile: cmd/controller/Dockerfile
-  environment: 
-    # 从.env文件加载环境变量
-    - MINIO_ACCESS_KEY_ID=${MINIO_ACCESS_KEY_ID}
-    - MINIO_SECRET_ACCESS_KEY=${MINIO_SECRET_ACCESS_KEY}
-  env_file:
-    - .env
+  # environment: 
+  #   # 从.env文件加载环境变量
+  #   - MINIO_ACCESS_KEY_ID=${MINIO_ACCESS_KEY_ID}
+  #   - MINIO_SECRET_ACCESS_KEY=${MINIO_SECRET_ACCESS_KEY}
+  # env_file:
+  #   - .env
   volumes:
     - ./online_judge_controller/cmd/controller/config/config.linux.yaml:/root/config/config.yaml:ro
+    - testcase_data:/testcases:rw
   depends_on:
     mysql:
       condition: service_healthy
     redis:
       condition: service_started
-    minio:
-      condition: service_healthy
+    # minio:
+    #   condition: service_healthy
     kafka:
       condition: service_started
   networks:
@@ -34,6 +35,8 @@ x-online-judge-judger-worker: &judger-worker-common
     dockerfile: cmd/worker/Dockfile
   volumes:
     - ./online_judge_judger/cmd/worker/config/config.linux.yaml:/root/config/config.yaml:ro
+    - /var/run/docker.sock:/var/run/docker.sock
+    - testcase_data:/testcases:ro
   depends_on:
     mysql:
       condition: service_healthy
@@ -58,9 +61,6 @@ services:
     depends_on:
       - mysql
       - redis
-      - online-judge-controller-1
-      - online-judge-controller-2
-      - online-judge-controller-3
     networks:
       - online-judge-network
     restart: unless-stopped
@@ -78,8 +78,8 @@ services:
     #   - "${ONLINE_JUDGE_CONTROLLER_PORT_1}:${ONLINE_JUDGE_CONTROLLER_PORT_1}"
     environment: 
       # 从.env文件加载环境变量
-      - MINIO_ACCESS_KEY_ID=${MINIO_ACCESS_KEY_ID}
-      - MINIO_SECRET_ACCESS_KEY=${MINIO_SECRET_ACCESS_KEY}
+      # - MINIO_ACCESS_KEY_ID=${MINIO_ACCESS_KEY_ID}
+      # - MINIO_SECRET_ACCESS_KEY=${MINIO_SECRET_ACCESS_KEY}
       - SERVER_PORT=${ONLINE_JUDGE_CONTROLLER_PORT_1}
 
   # 控制台服务实例2
@@ -89,8 +89,8 @@ services:
     #   - "${ONLINE_JUDGE_CONTROLLER_PORT_2}:${ONLINE_JUDGE_CONTROLLER_PORT_2}"
     environment: 
       # 从.env文件加载环境变量
-      - MINIO_ACCESS_KEY_ID=${MINIO_ACCESS_KEY_ID}
-      - MINIO_SECRET_ACCESS_KEY=${MINIO_SECRET_ACCESS_KEY}
+      # - MINIO_ACCESS_KEY_ID=${MINIO_ACCESS_KEY_ID}
+      # - MINIO_SECRET_ACCESS_KEY=${MINIO_SECRET_ACCESS_KEY}
       - SERVER_PORT=${ONLINE_JUDGE_CONTROLLER_PORT_2}
 
   # 控制台服务实例3
@@ -100,8 +100,8 @@ services:
     #   - "${ONLINE_JUDGE_CONTROLLER_PORT_3}:${ONLINE_JUDGE_CONTROLLER_PORT_3}"
     environment: 
       # 从.env文件加载环境变量
-      - MINIO_ACCESS_KEY_ID=${MINIO_ACCESS_KEY_ID}
-      - MINIO_SECRET_ACCESS_KEY=${MINIO_SECRET_ACCESS_KEY}
+      # - MINIO_ACCESS_KEY_ID=${MINIO_ACCESS_KEY_ID}
+      # - MINIO_SECRET_ACCESS_KEY=${MINIO_SECRET_ACCESS_KEY}
       - SERVER_PORT=${ONLINE_JUDGE_CONTROLLER_PORT_3}
 
   # 控制台定时任务
@@ -109,12 +109,12 @@ services:
     build:
       context: ./online_judge_controller
       dockerfile: cmd/cronjob/Dockerfile
-    environment: 
+    # environment: 
       # 从.env文件加载环境变量
-      - MINIO_ACCESS_KEY_ID=${MINIO_ACCESS_KEY_ID}
-      - MINIO_SECRET_ACCESS_KEY=${MINIO_SECRET_ACCESS_KEY}
-    env_file:
-      - .env
+      # - MINIO_ACCESS_KEY_ID=${MINIO_ACCESS_KEY_ID}
+      # - MINIO_SECRET_ACCESS_KEY=${MINIO_SECRET_ACCESS_KEY}
+    # env_file:
+    #   - .env
     volumes:
       - ./online_judge_controller/cmd/cronjob/config/config.linux.yaml:/root/config/config.yaml:ro
     depends_on:
@@ -147,6 +147,37 @@ services:
 
   online-judge-judger-worker:
     <<: *judger-worker-common
+
+  online-judge-autoscaler:
+    build:
+      context: ./online_judge_autoscaler
+      dockerfile: Dockerfile
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - STREAM_KEY=judge:task
+      - GROUP_NAME=judger_group
+      - SERVICE_NAME=online-judge-judger-worker
+      - BACKLOG_PER_WORKER=10
+      - HTTP_PORT=8088
+    ports:
+      - "8088:8088"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      redis:
+        condition: service_started
+      online-judge-judger-worker:
+        condition: service_started
+    networks:
+      - online-judge-network
+    restart: unless-stopped
+    # healthcheck:
+    #   test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8088/health"]
+    #   interval: 30s
+    #   timeout: 10s
+    #   retries: 3
+    #   start_period: 20s
 
   # MySQL 8.0 数据库
   mysql:
@@ -258,27 +289,27 @@ services:
       - online-judge-network
     restart: "no"
 
-  # MinIO 对象存储
-  minio:
-    image: minio/minio:latest
-    ports:
-      - "9000:9000"
-      - "9001:9001"
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY_ID:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_ACCESS_KEY:-minioadmin}
-    volumes:
-      - minio_data:/data
-    command: server /data --console-address ":9001"
-    networks:
-      - online-judge-network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 30s
-      timeout: 20s
-      retries: 3
-      start_period: 30s
+  # # MinIO 对象存储
+  # minio:
+  #   image: minio/minio:latest
+  #   ports:
+  #     - "9000:9000"
+  #     - "9001:9001"
+  #   environment:
+  #     MINIO_ROOT_USER: ${MINIO_ACCESS_KEY_ID:-minioadmin}
+  #     MINIO_ROOT_PASSWORD: ${MINIO_SECRET_ACCESS_KEY:-minioadmin}
+  #   volumes:
+  #     - minio_data:/data
+  #   command: server /data --console-address ":9001"
+  #   networks:
+  #     - online-judge-network
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+  #     interval: 30s
+  #     timeout: 20s
+  #     retries: 3
+  #     start_period: 30s
 
 volumes:
   mysql_data:
@@ -289,9 +320,11 @@ volumes:
     driver: local
   redis_config:
     driver: local
-  minio_data:
-    driver: local
+  # minio_data:
+  #   driver: local
   kafka_data:
+    driver: local
+  testcase_data:
     driver: local
 
 networks:

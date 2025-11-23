@@ -218,7 +218,7 @@ services:
     # ports:
     #   - "6379:6379"
     volumes:
-      - redis_data:/data
+      # - redis_data:/data
       - redis_config:/usr/local/etc/redis
     command: >
       redis-server
@@ -316,14 +316,14 @@ volumes:
     driver: local
   mysql_config:
     driver: local
-  redis_data:
-    driver: local
+  # redis_data:
+  #   driver: local
   redis_config:
     driver: local
   # minio_data:
   #   driver: local
-  kafka_data:
-    driver: local
+  # kafka_data:
+  #   driver: local
   testcase_data:
     driver: local
 

@@ -205,12 +205,12 @@ services:
     networks:
       - online-judge-network
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpassword"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
+    # healthcheck:
+    #   test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpassword"]
+    #   interval: 10s
+    #   timeout: 5s
+    #   retries: 5
+    #   start_period: 30s
 
   # Redis 7 缓存
   redis:
@@ -222,17 +222,18 @@ services:
       - redis_config:/usr/local/etc/redis
     command: >
       redis-server
-      --appendonly yes
+      --appendonly no
+      --save ""
       --maxmemory 256mb
       --maxmemory-policy allkeys-lru
     networks:
       - online-judge-network
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 3s
-      retries: 5
+    # healthcheck:
+    #   test: ["CMD", "redis-cli", "ping"]
+    #   interval: 10s
+    #   timeout: 3s
+    #   retries: 5
       
   # Kafka broker (KRaft mode, no ZooKeeper)
   kafka:

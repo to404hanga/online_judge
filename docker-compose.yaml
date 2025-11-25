@@ -32,11 +32,28 @@ x-controller-common: &controller-common
 x-online-judge-judger-worker: &judger-worker-common
   build:
     context: ./online_judge_judger
-    dockerfile: cmd/worker/Dockfile
+    dockerfile: cmd/worker/Dockerfile
   volumes:
     - ./online_judge_judger/cmd/worker/config/config.linux.yaml:/root/config/config.yaml:ro
     - /var/run/docker.sock:/var/run/docker.sock
     - testcase_data:/testcases:ro
+  depends_on:
+    mysql:
+      condition: service_started
+    redis:
+      condition: service_started
+    kafka:
+      condition: service_started
+  networks:
+    - online-judge-network
+  restart: on-failure
+
+x-online-judge-result-collector: &result-collector-common
+  build:
+    context: ./online_judge_judger
+    dockerfile: cmd/resultcollector/Dockerfile
+  volumes:
+    - ./online_judge_judger/cmd/resultcollector/config/config.linux.yaml:/root/config/config.yaml:ro
   depends_on:
     mysql:
       condition: service_started
@@ -131,7 +148,7 @@ services:
   online-judge-judger-master:
     build:
       context: ./online_judge_judger
-      dockerfile: cmd/master/Dockfile
+      dockerfile: cmd/master/Dockerfile
     volumes:
       - ./online_judge_judger/cmd/master/config/config.linux.yaml:/root/config/config.yaml:ro
     depends_on:
@@ -178,6 +195,12 @@ services:
     #   timeout: 10s
     #   retries: 3
     #   start_period: 20s
+
+  online-judge-result-collector:
+    <<: *result-collector-common
+    deploy:
+      mode: replicated
+      replicas: 3
 
   # MySQL 8.0 数据库
   mysql:

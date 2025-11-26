@@ -1,4 +1,4 @@
-name: online-judge
+name: onlinejudge
 
 # 控制台服务基础配置模板
 x-controller-common: &controller-common

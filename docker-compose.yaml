@@ -1,18 +1,8 @@
-# yaml-language-server: $schema=https://raw.githubusercontent.com/compose-spec/compose-go/v1.20.2/schema/compose-spec.json
-
-version: '3.8'
-
 # 控制台服务基础配置模板
 x-controller-common: &controller-common
   build:
     context: ./online_judge_controller
     dockerfile: cmd/controller/Dockerfile
-  # environment: 
-  #   # 从.env文件加载环境变量
-  #   - MINIO_ACCESS_KEY_ID=${MINIO_ACCESS_KEY_ID}
-  #   - MINIO_SECRET_ACCESS_KEY=${MINIO_SECRET_ACCESS_KEY}
-  # env_file:
-  #   - .env
   volumes:
     - ./online_judge_controller/cmd/controller/config/config.linux.yaml:/root/config/config.yaml:ro
     - testcase_data:/testcases:rw
@@ -21,8 +11,6 @@ x-controller-common: &controller-common
       condition: service_started
     redis:
       condition: service_started
-    # minio:
-    #   condition: service_healthy
     kafka:
       condition: service_started
   networks:
@@ -81,44 +69,23 @@ services:
     networks:
       - online-judge-network
     restart: unless-stopped
-    # healthcheck:
-    #   test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
-    #   interval: 30s
-    #   timeout: 10s
-    #   retries: 3
-    #   start_period: 40s
 
   # 控制台服务实例1
   online-judge-controller-1:
     <<: *controller-common
-    # ports:
-    #   - "${ONLINE_JUDGE_CONTROLLER_PORT_1}:${ONLINE_JUDGE_CONTROLLER_PORT_1}"
     environment: 
-      # 从.env文件加载环境变量
-      # - MINIO_ACCESS_KEY_ID=${MINIO_ACCESS_KEY_ID}
-      # - MINIO_SECRET_ACCESS_KEY=${MINIO_SECRET_ACCESS_KEY}
       - SERVER_PORT=${ONLINE_JUDGE_CONTROLLER_PORT_1}
 
   # 控制台服务实例2
   online-judge-controller-2:
     <<: *controller-common
-    # ports:
-    #   - "${ONLINE_JUDGE_CONTROLLER_PORT_2}:${ONLINE_JUDGE_CONTROLLER_PORT_2}"
     environment: 
-      # 从.env文件加载环境变量
-      # - MINIO_ACCESS_KEY_ID=${MINIO_ACCESS_KEY_ID}
-      # - MINIO_SECRET_ACCESS_KEY=${MINIO_SECRET_ACCESS_KEY}
       - SERVER_PORT=${ONLINE_JUDGE_CONTROLLER_PORT_2}
 
   # 控制台服务实例3
   online-judge-controller-3:
     <<: *controller-common
-    # ports:
-    #   - "${ONLINE_JUDGE_CONTROLLER_PORT_3}:${ONLINE_JUDGE_CONTROLLER_PORT_3}"
     environment: 
-      # 从.env文件加载环境变量
-      # - MINIO_ACCESS_KEY_ID=${MINIO_ACCESS_KEY_ID}
-      # - MINIO_SECRET_ACCESS_KEY=${MINIO_SECRET_ACCESS_KEY}
       - SERVER_PORT=${ONLINE_JUDGE_CONTROLLER_PORT_3}
 
   # 控制台定时任务
@@ -126,12 +93,6 @@ services:
     build:
       context: ./online_judge_controller
       dockerfile: cmd/cronjob/Dockerfile
-    # environment: 
-      # 从.env文件加载环境变量
-      # - MINIO_ACCESS_KEY_ID=${MINIO_ACCESS_KEY_ID}
-      # - MINIO_SECRET_ACCESS_KEY=${MINIO_SECRET_ACCESS_KEY}
-    # env_file:
-    #   - .env
     volumes:
       - ./online_judge_controller/cmd/cronjob/config/config.linux.yaml:/root/config/config.yaml:ro
     depends_on:
@@ -139,8 +100,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
-      # minio:
-      #   condition: service_healthy
     networks:
       - online-judge-network
     restart: unless-stopped 
@@ -189,18 +148,12 @@ services:
     networks:
       - online-judge-network
     restart: unless-stopped
-    # healthcheck:
-    #   test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8088/health"]
-    #   interval: 30s
-    #   timeout: 10s
-    #   retries: 3
-    #   start_period: 20s
 
   online-judge-result-collector:
     <<: *result-collector-common
     deploy:
       mode: replicated
-      replicas: 3
+      replicas: ${ONLINE_JUDGE_RESULT_COLLECTOR_REPLICAS:3}
 
   # MySQL 8.0 数据库
   mysql:
@@ -212,12 +165,9 @@ services:
       MYSQL_PASSWORD: "123456"
       # 优化MySQL配置
       MYSQL_INITDB_SKIP_TZINFO: 1
-    # ports:
-    #   - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
       - mysql_config:/etc/mysql/conf.d
-      # 初始化SQL脚本目录
       - ./online_judge_common/model/mysql/:/docker-entrypoint-initdb.d
     command: >
       --default-authentication-plugin=mysql_native_password
@@ -228,20 +178,11 @@ services:
     networks:
       - online-judge-network
     restart: unless-stopped
-    # healthcheck:
-    #   test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpassword"]
-    #   interval: 10s
-    #   timeout: 5s
-    #   retries: 5
-    #   start_period: 30s
 
   # Redis 7 缓存
   redis:
     image: redis:7-alpine
-    # ports:
-    #   - "6379:6379"
     volumes:
-      # - redis_data:/data
       - redis_config:/usr/local/etc/redis
     command: >
       redis-server
@@ -252,18 +193,12 @@ services:
     networks:
       - online-judge-network
     restart: unless-stopped
-    # healthcheck:
-    #   test: ["CMD", "redis-cli", "ping"]
-    #   interval: 10s
-    #   timeout: 3s
-    #   retries: 5
       
   # Kafka broker (KRaft mode, no ZooKeeper)
   kafka:
     image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/bitnami/kafka:latest
     environment:
       - KAFKA_CFG_NODE_ID=0
-      # - 三个分区
       - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=false
       - KAFKA_CFG_PROCESS_ROLES=controller,broker
       - KAFKA_CFG_LISTENERS=PLAINTEXT://0.0.0.0:9092,CONTROLLER://:9093,EXTERNAL://0.0.0.0:9094
@@ -271,8 +206,6 @@ services:
       - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT,PLAINTEXT:PLAINTEXT
       - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka:9093
       - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
-    # ports:
-    #   - "9092:9092"  # expose if you need host access
     networks:
       - online-judge-network
     restart: unless-stopped
@@ -313,41 +246,13 @@ services:
       - online-judge-network
     restart: "no"
 
-  # # MinIO 对象存储
-  # minio:
-  #   image: minio/minio:latest
-  #   ports:
-  #     - "9000:9000"
-  #     - "9001:9001"
-  #   environment:
-  #     MINIO_ROOT_USER: ${MINIO_ACCESS_KEY_ID:-minioadmin}
-  #     MINIO_ROOT_PASSWORD: ${MINIO_SECRET_ACCESS_KEY:-minioadmin}
-  #   volumes:
-  #     - minio_data:/data
-  #   command: server /data --console-address ":9001"
-  #   networks:
-  #     - online-judge-network
-  #   restart: unless-stopped
-  #   healthcheck:
-  #     test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-  #     interval: 30s
-  #     timeout: 20s
-  #     retries: 3
-  #     start_period: 30s
-
 volumes:
   mysql_data:
     driver: local
   mysql_config:
     driver: local
-  # redis_data:
-  #   driver: local
   redis_config:
     driver: local
-  # minio_data:
-  #   driver: local
-  # kafka_data:
-  #   driver: local
   testcase_data:
     driver: local
 

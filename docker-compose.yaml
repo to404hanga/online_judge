@@ -112,7 +112,7 @@ services:
       - ./online_judge_judger/cmd/master/config/config.linux.yaml:/root/config/config.yaml:ro
     depends_on:
       mysql:
-        condition: service_healthy
+        condition: service_started
       redis:
         condition: service_started
       kafka:

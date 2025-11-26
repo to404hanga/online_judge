@@ -153,7 +153,7 @@ services:
     <<: *result-collector-common
     deploy:
       mode: replicated
-      replicas: ${ONLINE_JUDGE_RESULT_COLLECTOR_REPLICAS:3}
+      replicas: ${ONLINE_JUDGE_RESULT_COLLECTOR_REPLICAS:-3}
 
   # MySQL 8.0 数据库
   mysql:

@@ -8,6 +8,11 @@ x-controller-common: &controller-common
   volumes:
     - ./online_judge_controller/cmd/controller/config/config.linux.yaml:/root/config/config.yaml:ro
     - testcase_data:/testcases:rw
+  environment:
+    - SERVER_ADDR=:8081
+    - SERVER_CONTAINER=1
+  expose:
+    - "8081"
   depends_on:
     mysql:
       condition: service_started
@@ -72,23 +77,12 @@ services:
       - online-judge-network
     restart: unless-stopped
 
-  # 控制台服务实例1
-  online-judge-controller-1:
+  # 控制台服务实例
+  online-judge-controller:
     <<: *controller-common
-    environment: 
-      - SERVER_PORT=${ONLINE_JUDGE_CONTROLLER_PORT_1}
-
-  # 控制台服务实例2
-  online-judge-controller-2:
-    <<: *controller-common
-    environment: 
-      - SERVER_PORT=${ONLINE_JUDGE_CONTROLLER_PORT_2}
-
-  # 控制台服务实例3
-  online-judge-controller-3:
-    <<: *controller-common
-    environment: 
-      - SERVER_PORT=${ONLINE_JUDGE_CONTROLLER_PORT_3}
+    deploy:
+      mode: replicated
+      replicas: ${ONLINE_JUDGE_CONTROLLER_REPLICAS:-3}
 
   # 控制台定时任务
   online-judge-controller-cronjob:
@@ -219,6 +213,8 @@ services:
       - ALLOW_NONE_AUTHENTICATION=yes
     ports:
       - "2379:2379"
+    networks:
+      - online-judge-network
 
   kafka-init:
     image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/bitnami/kafka:latest

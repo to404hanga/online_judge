@@ -1,3 +1,5 @@
 online_judge_*/
 
 .env
+
+*.csv

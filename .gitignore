@@ -1,5 +1,7 @@
 online_judge_*/
 
+.VSCodeCounter
+
 .env
 
 *.csv

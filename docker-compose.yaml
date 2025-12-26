@@ -78,6 +78,7 @@ services:
     restart: unless-stopped
 
   # 控制台服务实例
+  # docker compose up -d online-judge-controller --scale online-judge-controller=3
   online-judge-controller:
     <<: *controller-common
     deploy:
@@ -245,6 +246,15 @@ services:
     environment:
       KAFKA_CLUSTERS_0_NAME: local
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+    networks:
+      - online-judge-network
+
+  prometheus:
+    image: prom/prometheus:v2.47.2
+    volumes:
+      - ./prometheus.yaml:/etc/prometheus/prometheus.yml
+    ports:
+      - 9090:9090
     networks:
       - online-judge-network
 

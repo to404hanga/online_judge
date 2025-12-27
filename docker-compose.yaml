@@ -120,6 +120,9 @@ services:
 
   online-judge-judger-worker:
     <<: *judger-worker-common
+    deploy:
+      mode: replicated
+      replicas: ${ONLINE_JUDGE_JUDGER_WORKER_REPLICAS:-3}
 
   online-judge-autoscaler:
     build:

@@ -41,5 +41,5 @@ scrape_configs:
       - names:
           - online-judge-result-collector
         type: A
-        port: 8082
+        port: 2112
         refresh_interval: 5s

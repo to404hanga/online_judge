@@ -94,8 +94,6 @@ services:
       - ./online_judge_controller/cmd/cronjob/config/config.linux.yaml:/root/config/config.yaml:ro
     depends_on:
       mysql:
-        condition: service_healthy
-      redis:
         condition: service_started
     networks:
       - online-judge-network
